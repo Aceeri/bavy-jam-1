@@ -5,4 +5,4 @@ edition = "2024"
 
 [dependencies]
 bevy = { git = "https://github.com/bevyengine/bevy", rev = "d06aa47744dfa378f2e8a31cd7ff2d59c9afe4b9", features = ["bevy_gltf", "bevy_dev_tools"] }
-rand = "0.10.0"
+rand = { version = "0.10.0", features = ["wasm_js"] }
