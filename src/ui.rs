@@ -114,7 +114,7 @@ fn update_rat_counter(counter: Res<RatCounter>, mut query: Query<&mut Text, With
     }
 }
 
-const MINIMUM_SPAWN_RATE: f32 = 0.0003;
+const MINIMUM_SPAWN_RATE: f32 = 0.001;
 const MAX_BROOM: f32 = BOUNDING_RANGE * std::f32::consts::SQRT_2;
 
 fn handle_upgrade_buttons(
@@ -162,9 +162,11 @@ fn handle_upgrade_buttons(
                 let cost = upgrades.pit_cost as u32;
                 if counter.total >= cost {
                     counter.total -= cost;
-                    upgrades.pit_size = (upgrades.pit_size + 0.1).min(BOUNDING_RANGE);
+                    upgrades.pit_size = (upgrades.pit_size + 0.15).min(BOUNDING_RANGE);
                     pit.half_size = upgrades.pit_size;
-                    upgrades.pit_cost *= 1.25;
+                    upgrades.pit_cost *= 1.2;
+
+                    // 0.1 size, 1.25 cost is good if we add more rat types but jam
                 }
             }
         }

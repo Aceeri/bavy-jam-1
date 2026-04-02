@@ -121,7 +121,11 @@ fn spawn_rats_over_time(
             Velocity::default(),
             Mesh3d(mesh.0.clone()),
             MeshMaterial3d(material.0.clone()),
-            Transform::from_translation(Vec3::new(x, 0.0, z)),
+            Transform {
+                translation: Vec3::new(x, 0.0, z),
+                scale: Vec3::splat(2.0),
+                ..default()
+            },
         ));
     }
 }

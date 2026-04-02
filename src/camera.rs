@@ -1,6 +1,8 @@
 use bevy::{
     light::{VolumetricFog, VolumetricLight},
+    pbr::ScreenSpaceAmbientOcclusion,
     prelude::*,
+    render::occlusion_culling::OcclusionCulling,
     scene2::{CommandsSceneExt, Scene, bsn},
 };
 
@@ -16,7 +18,7 @@ fn setup(mut commands: Commands) {
 
     commands.spawn((
         DirectionalLight {
-            illuminance: 5000.0,
+            illuminance: 100.0,
             shadow_maps_enabled: true,
             ..default()
         },
@@ -43,6 +45,7 @@ pub fn top_down_camera() -> impl Scene {
             translation: {CAMERA_OFFSET},
             rotation: Quat::from_rotation_x(-56.0_f32.to_radians()),
         }
+        OcclusionCulling
         TopDownCamera { speed: 10.0 }
     }
 }

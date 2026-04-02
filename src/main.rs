@@ -13,6 +13,7 @@ fn main() {
 
     app.add_plugins(DefaultPlugins)
         .add_plugins(FpsOverlayPlugin::default())
+        .insert_resource(GlobalAmbientLight::NONE)
         .add_plugins(health::plugin)
         .add_plugins(player::plugin)
         .add_plugins(rat::plugin)

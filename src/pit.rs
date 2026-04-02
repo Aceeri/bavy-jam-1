@@ -1,14 +1,19 @@
 //! RAT PIT RAT PIT RAT PIT
 //!
 
+use bevy::light::VolumetricLight;
+use bevy::render::occlusion_culling::OcclusionCulling;
 use bevy::{light::FogVolume, prelude::*};
 
 use crate::rat::BOUNDING_RANGE;
 use crate::ui::Upgrades;
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(Startup, (init_pit, spawn_ground, spawn_walls).chain())
-        .add_systems(Update, (rebuild_ground, resize_pit_fog));
+    app.add_systems(
+        Startup,
+        (init_pit, spawn_ground, spawn_walls, spawn_corner_lights).chain(),
+    )
+    .add_systems(Update, (rebuild_ground, resize_pit_fog));
 }
 
 #[derive(Component)]
@@ -188,6 +193,34 @@ fn spawn_walls(
             0.0,
         )),
     ));
+}
+
+fn spawn_corner_lights(mut commands: Commands) {
+    let b = BOUNDING_RANGE + 0.3;
+    let height = 5.0;
+
+    for corner in [
+        Vec3::new(-b, height, -b),
+        Vec3::new(b, height, -b),
+        Vec3::new(-b, height, b),
+        Vec3::new(b, height, b),
+    ] {
+        let dir = (Vec3::ZERO - corner).normalize();
+        commands.spawn((
+            SpotLight {
+                intensity: 500_000.0,
+                range: b * 5.0,
+                radius: 0.5,
+                outer_angle: 0.9,
+                inner_angle: 0.4,
+                shadow_maps_enabled: true,
+                ..default()
+            },
+            VolumetricLight,
+            OcclusionCulling,
+            Transform::from_translation(corner).looking_to(dir, Vec3::Y),
+        ));
+    }
 }
 
 fn resize_pit_fog(pit: Res<RatPit>, mut fog: Query<&mut Transform, With<PitFog>>) {
