@@ -8,17 +8,16 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, move_camera);
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn setup(mut commands: Commands) {
     commands.spawn_scene(top_down_camera());
 
     commands.spawn((
-        Name::new("Ground plane"),
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(50.0, 50.0))),
-        MeshMaterial3d(materials.add(Color::srgb(0.3, 0.5, 0.3))),
+        DirectionalLight {
+            illuminance: 5000.0,
+            shadow_maps_enabled: true,
+            ..default()
+        },
+        Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
     ));
 }
 
@@ -31,8 +30,8 @@ pub fn top_down_camera() -> impl Scene {
     bsn! {
         Camera3d
         Transform {
-            translation: Vec3::new(0.0, 10.0, 0.0),
-            rotation: Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2),
+            translation: Vec3::new(0.0, 12.0, 8.0),
+            rotation: Quat::from_rotation_x(-56.0_f32.to_radians()),
         }
         TopDownCamera { speed: 10.0 }
     }
