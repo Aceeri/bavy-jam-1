@@ -9,7 +9,8 @@ use crate::ui::Upgrades;
 pub struct RatCounter(pub u32);
 
 pub fn plugin(app: &mut App) {
-    app.insert_resource(RatCounter(100_000_000));
+    // app.insert_resource(RatCounter(100_000_000));
+    app.insert_resource(RatCounter(0));
     app.add_systems(Startup, setup_rat_resources)
         .add_systems(
             Update,
@@ -92,7 +93,8 @@ fn spawn_rats_over_time(
     spawner.timer.tick(time.delta());
 
     for _ in 0..spawner.timer.times_finished_this_tick() {
-        let (x, z) = rand_pos_outside_pit(&mut spawner.rng, pit.half_size);
+        // let (x, z) = rand_pos_outside_pit(&mut spawner.rng, pit.half_size);
+        let (x, z) = rand_pos(&mut spawner.rng, pit.half_size);
 
         commands.spawn((
             Rat,
@@ -109,20 +111,28 @@ fn spawn_rats_over_time(
 // in the corners... whatever, maybe some sort of trapezoidal uniform picking would be better but 24 hour jam
 //
 // otherwise we end up spawning in the pit most of the time and the pit upgrade becomes trash
-fn rand_pos_outside_pit(rng: &mut SmallRng, pit_half: f32) -> (f32, f32) {
-    let rand_axis = |rng: &mut SmallRng| -> f32 {
-        let t: f32 = rng.random_range(0.0..1.0);
-        let pos = pit_half + (BOUNDING_RANGE - pit_half) * ((t * 2.0).fract());
-        if t < 0.5 { -pos } else { pos }
-    };
-    let rand_free =
-        |rng: &mut SmallRng| -> f32 { rng.random_range(-BOUNDING_RANGE..BOUNDING_RANGE) };
+// fn rand_pos_outside_pit(rng: &mut SmallRng, pit_half: f32) -> (f32, f32) {
+//     let rand_axis = |rng: &mut SmallRng| -> f32 {
+//         let t: f32 = rng.random_range(0.0..1.0);
+//         let pos = pit_half + (BOUNDING_RANGE - pit_half) * ((t * 2.0).fract());
+//         if t < 0.5 { -pos } else { pos }
+//     };
+//     let rand_free =
+//         |rng: &mut SmallRng| -> f32 { rng.random_range(-BOUNDING_RANGE..BOUNDING_RANGE) };
 
-    if rng.random_range(0.0..1.0) < 0.5 {
-        (rand_axis(rng), rand_free(rng))
-    } else {
-        (rand_free(rng), rand_axis(rng))
-    }
+//     if rng.random_range(0.0..1.0) < 0.5 {
+//         (rand_axis(rng), rand_free(rng))
+//     } else {
+//         (rand_free(rng), rand_axis(rng))
+//     }
+// }
+
+// actually just let the user get automated rats too
+fn rand_pos(rng: &mut SmallRng, pit_half: f32) -> (f32, f32) {
+    (
+        rng.random_range(-BOUNDING_RANGE..BOUNDING_RANGE),
+        rng.random_range(-BOUNDING_RANGE..BOUNDING_RANGE),
+    )
 }
 
 fn apply_velocity(time: Res<Time>, mut query: Query<(&mut Transform, &Velocity), With<Rat>>) {
