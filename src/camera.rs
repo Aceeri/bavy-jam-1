@@ -1,4 +1,5 @@
 use bevy::{
+    light::{VolumetricFog, VolumetricLight},
     prelude::*,
     scene2::{CommandsSceneExt, Scene, bsn},
 };
@@ -19,6 +20,7 @@ fn setup(mut commands: Commands) {
             shadow_maps_enabled: true,
             ..default()
         },
+        VolumetricLight,
         Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
     ));
 }
@@ -28,11 +30,15 @@ pub struct TopDownCamera {
     pub speed: f32,
 }
 
-const CAMERA_OFFSET: Vec3 = Vec3::new(0.0, 12.0, 8.5);
+const CAMERA_OFFSET: Vec3 = Vec3::new(0.0, 13.5, 10.5);
 
 pub fn top_down_camera() -> impl Scene {
     bsn! {
         Camera3d
+        VolumetricFog {
+            ambient_intensity: 0.0,
+            step_count: 32,
+        }
         Transform {
             translation: {CAMERA_OFFSET},
             rotation: Quat::from_rotation_x(-56.0_f32.to_radians()),

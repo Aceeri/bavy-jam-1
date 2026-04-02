@@ -1,20 +1,43 @@
 //! RAT PIT RAT PIT RAT PIT
 //!
 
-use bevy::{prelude::*, scene2::bsn};
+use bevy::{light::FogVolume, prelude::*};
 
 use crate::rat::BOUNDING_RANGE;
 use crate::ui::Upgrades;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Startup, (init_pit, spawn_ground, spawn_walls).chain())
-        .add_systems(Update, rebuild_ground);
+        .add_systems(Update, (rebuild_ground, resize_pit_fog));
 }
+
+#[derive(Component)]
+struct PitFog;
 
 fn init_pit(mut commands: Commands, upgrades: Res<Upgrades>) {
     commands.insert_resource(RatPit {
         half_size: upgrades.pit_size,
     });
+
+    let h = upgrades.pit_size;
+    commands.spawn((
+        PitFog,
+        FogVolume {
+            density_factor: 1.0,
+            absorption: 0.8,
+            scattering: 0.0,
+            scattering_asymmetry: 0.0,
+            fog_color: Color::BLACK,
+            light_tint: Color::BLACK,
+            light_intensity: 0.0,
+            ..default()
+        },
+        Transform::from_translation(Vec3::new(0.0, -1.5, 0.0)).with_scale(Vec3::new(
+            h * 2.0,
+            3.0,
+            h * 2.0,
+        )),
+    ));
 }
 
 #[derive(Resource, Reflect)]
@@ -165,4 +188,13 @@ fn spawn_walls(
             0.0,
         )),
     ));
+}
+
+fn resize_pit_fog(pit: Res<RatPit>, mut fog: Query<&mut Transform, With<PitFog>>) {
+    if !pit.is_changed() {
+        return;
+    }
+    for mut transform in &mut fog {
+        transform.scale = Vec3::new(pit.half_size * 2.0, 3.0, pit.half_size * 2.0);
+    }
 }

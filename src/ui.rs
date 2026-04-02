@@ -33,7 +33,7 @@ impl Default for Upgrades {
         Self {
             broom_length: 0.1,
             spawn_interval: 1.0,
-            pit_size: 0.3,
+            pit_size: 0.2,
 
             broom_cost: 5.0,
             spawn_cost: 5.0,
@@ -114,7 +114,7 @@ fn update_rat_counter(counter: Res<RatCounter>, mut query: Query<&mut Text, With
     }
 }
 
-const MINIMUM_SPAWN_RATE: f32 = 0.001;
+const MINIMUM_SPAWN_RATE: f32 = 0.0003;
 const MAX_BROOM: f32 = BOUNDING_RANGE * std::f32::consts::SQRT_2;
 
 fn handle_upgrade_buttons(
@@ -137,7 +137,7 @@ fn handle_upgrade_buttons(
                 let cost = upgrades.broom_cost as u32;
                 if counter.total >= cost {
                     counter.total -= cost;
-                    upgrades.broom_length = (upgrades.broom_length + 0.15).min(MAX_BROOM);
+                    upgrades.broom_length = (upgrades.broom_length + 0.175).min(MAX_BROOM);
                     upgrades.broom_cost *= 1.2;
                 }
             }
@@ -150,7 +150,7 @@ fn handle_upgrade_buttons(
                 if counter.total >= cost {
                     counter.total -= cost;
                     upgrades.spawn_interval =
-                        (upgrades.spawn_interval * 0.9).max(MINIMUM_SPAWN_RATE);
+                        (upgrades.spawn_interval * 0.85).max(MINIMUM_SPAWN_RATE);
                     upgrades.spawn_cost *= 1.15;
                 }
             }
@@ -164,7 +164,7 @@ fn handle_upgrade_buttons(
                     counter.total -= cost;
                     upgrades.pit_size = (upgrades.pit_size + 0.1).min(BOUNDING_RANGE);
                     pit.half_size = upgrades.pit_size;
-                    upgrades.pit_cost *= 1.1;
+                    upgrades.pit_cost *= 1.25;
                 }
             }
         }
