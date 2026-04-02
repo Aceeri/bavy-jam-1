@@ -84,7 +84,11 @@ fn setup_rat_resources(
         }
         .from_asset("rat.glb"),
     );
-    let material = materials.add(StandardMaterial::default());
+
+    let material = materials.add(StandardMaterial {
+        // emissive: Color::srgb(1.0, 1.0, 1.0).into(),
+        ..default()
+    });
 
     commands.insert_resource(RatMesh(mesh));
     commands.insert_resource(RatMaterial(material));
