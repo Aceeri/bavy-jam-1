@@ -16,8 +16,8 @@ pub struct RatCounter {
 impl Default for RatCounter {
     fn default() -> Self {
         Self {
-            total: 100_000_000,
-            // total: 0,
+            // total: 100_000_000,
+            total: 0,
             per_second: 0,
             pending: 0,
             timer: Timer::from_seconds(1.0, TimerMode::Repeating),
