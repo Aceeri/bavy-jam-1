@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::scene2::{CommandsSceneExt, bsn};
 
 use crate::pit::RatPit;
-use crate::rat::RatCounter;
+use crate::rat::{BOUNDING_RANGE, RatCounter};
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<Upgrades>()
@@ -23,9 +23,9 @@ pub struct Upgrades {
     pub spawn_interval: f32,
     pub pit_size: f32,
 
-    pub broom_cost: u32,
-    pub spawn_cost: u32,
-    pub pit_cost: u32,
+    pub broom_cost: f32,
+    pub spawn_cost: f32,
+    pub pit_cost: f32,
 }
 
 impl Default for Upgrades {
@@ -35,9 +35,9 @@ impl Default for Upgrades {
             spawn_interval: 1.0,
             pit_size: 0.3,
 
-            broom_cost: 5,
-            spawn_cost: 5,
-            pit_cost: 10,
+            broom_cost: 5.0,
+            spawn_cost: 5.0,
+            pit_cost: 10.0,
         }
     }
 }
@@ -110,9 +110,12 @@ fn update_rat_counter(counter: Res<RatCounter>, mut query: Query<&mut Text, With
     }
 
     for mut text in &mut query {
-        **text = format!("Rats: {}", counter.0);
+        **text = format!("Rats: {} (+{}/s)", counter.total, counter.per_second);
     }
 }
+
+const MINIMUM_SPAWN_RATE: f32 = 0.001;
+const MAX_BROOM: f32 = BOUNDING_RANGE * std::f32::consts::SQRT_2;
 
 fn handle_upgrade_buttons(
     interactions: Query<(&Interaction, &UpgradeButton), Changed<Interaction>>,
@@ -127,25 +130,41 @@ fn handle_upgrade_buttons(
 
         match button {
             UpgradeButton::Broom => {
-                if counter.0 >= upgrades.broom_cost {
-                    counter.0 -= upgrades.broom_cost;
-                    upgrades.broom_length += 0.1;
-                    upgrades.broom_cost = (upgrades.broom_cost as f32 * 1.4) as u32;
+                if upgrades.broom_length >= MAX_BROOM {
+                    continue;
+                }
+
+                let cost = upgrades.broom_cost as u32;
+                if counter.total >= cost {
+                    counter.total -= cost;
+                    upgrades.broom_length = (upgrades.broom_length + 0.15).min(MAX_BROOM);
+                    upgrades.broom_cost *= 1.2;
                 }
             }
             UpgradeButton::SpawnRate => {
-                if counter.0 >= upgrades.spawn_cost {
-                    counter.0 -= upgrades.spawn_cost;
-                    upgrades.spawn_interval = (upgrades.spawn_interval * 0.85).max(0.01);
-                    upgrades.spawn_cost = (upgrades.spawn_cost as f32 * 1.2) as u32;
+                if upgrades.spawn_interval <= MINIMUM_SPAWN_RATE {
+                    continue;
+                }
+
+                let cost = upgrades.spawn_cost as u32;
+                if counter.total >= cost {
+                    counter.total -= cost;
+                    upgrades.spawn_interval =
+                        (upgrades.spawn_interval * 0.9).max(MINIMUM_SPAWN_RATE);
+                    upgrades.spawn_cost *= 1.15;
                 }
             }
             UpgradeButton::PitSize => {
-                if counter.0 >= upgrades.pit_cost {
-                    counter.0 -= upgrades.pit_cost;
-                    upgrades.pit_size += 0.1;
+                if upgrades.pit_size >= BOUNDING_RANGE {
+                    continue;
+                }
+
+                let cost = upgrades.pit_cost as u32;
+                if counter.total >= cost {
+                    counter.total -= cost;
+                    upgrades.pit_size = (upgrades.pit_size + 0.1).min(BOUNDING_RANGE);
                     pit.half_size = upgrades.pit_size;
-                    upgrades.pit_cost = (upgrades.pit_cost as f32 * 1.2) as u32;
+                    upgrades.pit_cost *= 1.1;
                 }
             }
         }
@@ -165,9 +184,31 @@ fn update_upgrade_text(
         for child in children.iter() {
             if let Ok(mut text) = texts.get_mut(child) {
                 **text = match button {
-                    UpgradeButton::Broom => format!("Broom [{}]", upgrades.broom_cost),
-                    UpgradeButton::SpawnRate => format!("Spawn [{}]", upgrades.spawn_cost),
-                    UpgradeButton::PitSize => format!("Pit [{}]", upgrades.pit_cost),
+                    UpgradeButton::Broom => {
+                        let cost = if upgrades.broom_length >= MAX_BROOM {
+                            "MAXED".to_owned()
+                        } else {
+                            format!("{}", upgrades.broom_cost as u32)
+                        };
+                        format!("Broom [{}]", cost)
+                    }
+                    UpgradeButton::SpawnRate => {
+                        let cost = if upgrades.spawn_interval <= MINIMUM_SPAWN_RATE {
+                            "MAXED".to_owned()
+                        } else {
+                            format!("{}", upgrades.spawn_cost as u32)
+                        };
+
+                        format!("Spawn [{}]", cost)
+                    }
+                    UpgradeButton::PitSize => {
+                        let cost = if upgrades.pit_size >= BOUNDING_RANGE {
+                            "MAXED".to_owned()
+                        } else {
+                            format!("{}", upgrades.pit_cost as u32)
+                        };
+                        format!("Pit [{}]", cost)
+                    }
                 };
             }
         }

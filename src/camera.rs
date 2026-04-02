@@ -28,7 +28,7 @@ pub struct TopDownCamera {
     pub speed: f32,
 }
 
-const CAMERA_OFFSET: Vec3 = Vec3::new(0.0, 12.0, 8.0);
+const CAMERA_OFFSET: Vec3 = Vec3::new(0.0, 12.0, 8.5);
 
 pub fn top_down_camera() -> impl Scene {
     bsn! {

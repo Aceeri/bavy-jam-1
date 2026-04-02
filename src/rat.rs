@@ -5,16 +5,37 @@ use rand::{RngExt, SeedableRng, rngs::SmallRng};
 use crate::pit::RatPit;
 use crate::ui::Upgrades;
 
-#[derive(Resource, Default, Reflect)]
-pub struct RatCounter(pub u32);
+#[derive(Resource, Reflect)]
+pub struct RatCounter {
+    pub total: u32,
+    pub per_second: u32,
+    pending: u32,
+    timer: Timer,
+}
+
+impl Default for RatCounter {
+    fn default() -> Self {
+        Self {
+            total: 100_000_000,
+            // total: 0,
+            per_second: 0,
+            pending: 0,
+            timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+        }
+    }
+}
 
 pub fn plugin(app: &mut App) {
-    // app.insert_resource(RatCounter(100_000_000));
-    app.insert_resource(RatCounter(0));
+    app.init_resource::<RatCounter>();
     app.add_systems(Startup, setup_rat_resources)
         .add_systems(
             Update,
-            (strip_skinning_data, spawn_rats_over_time, cursor_push),
+            (
+                strip_skinning_data,
+                spawn_rats_over_time,
+                cursor_push,
+                tick_rat_counter,
+            ),
         )
         .add_systems(
             FixedUpdate,
@@ -36,7 +57,7 @@ struct RatMaterial(Handle<StandardMaterial>);
 
 #[derive(Resource)]
 struct RatSpawner {
-    timer: Timer,
+    accumulator: f32,
     rng: SmallRng,
 }
 
@@ -68,8 +89,8 @@ fn setup_rat_resources(
     commands.insert_resource(RatMesh(mesh));
     commands.insert_resource(RatMaterial(material));
     commands.insert_resource(RatSpawner {
-        timer: Timer::from_seconds(upgrades.spawn_interval, TimerMode::Repeating),
-        rng: SmallRng::from_rng(&mut rand::rng()),
+        accumulator: 0.0,
+        rng: SmallRng::seed_from_u64(6742069),
     });
     commands.insert_resource(BroomState::default());
 }
@@ -87,13 +108,12 @@ fn spawn_rats_over_time(
         return;
     };
 
-    spawner
-        .timer
-        .set_duration(std::time::Duration::from_secs_f32(upgrades.spawn_interval));
-    spawner.timer.tick(time.delta());
+    spawner.accumulator += time.delta_secs();
 
-    for _ in 0..spawner.timer.times_finished_this_tick() {
-        // let (x, z) = rand_pos_outside_pit(&mut spawner.rng, pit.half_size);
+    let interval = upgrades.spawn_interval;
+    while spawner.accumulator >= interval {
+        spawner.accumulator -= interval;
+
         let (x, z) = rand_pos(&mut spawner.rng, pit.half_size);
 
         commands.spawn((
@@ -198,8 +218,17 @@ pub fn fall(
 
         if transform.translation.y < PIT_DESPAWN_Y {
             commands.entity(entity).despawn();
-            counter.0 += 1;
+            counter.total += 1;
+            counter.pending += 1;
         }
+    }
+}
+
+fn tick_rat_counter(mut counter: ResMut<RatCounter>, time: Res<Time>) {
+    counter.timer.tick(time.delta());
+    if counter.timer.just_finished() {
+        counter.per_second = counter.pending;
+        counter.pending = 0;
     }
 }
 
