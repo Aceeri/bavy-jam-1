@@ -3,6 +3,8 @@ use bevy::{
     scene2::{CommandsSceneExt, Scene, bsn},
 };
 
+use crate::rat::BOUNDING_RANGE;
+
 pub fn plugin(app: &mut App) {
     app.add_systems(Startup, setup)
         .add_systems(Update, move_camera);
@@ -26,11 +28,13 @@ pub struct TopDownCamera {
     pub speed: f32,
 }
 
+const CAMERA_OFFSET: Vec3 = Vec3::new(0.0, 12.0, 8.0);
+
 pub fn top_down_camera() -> impl Scene {
     bsn! {
         Camera3d
         Transform {
-            translation: Vec3::new(0.0, 12.0, 8.0),
+            translation: {CAMERA_OFFSET},
             rotation: Quat::from_rotation_x(-56.0_f32.to_radians()),
         }
         TopDownCamera { speed: 10.0 }
@@ -63,5 +67,11 @@ pub fn move_camera(
         }
 
         transform.translation += direction * camera.speed * time.delta_secs();
+
+        // Clamp the ground target point, then re-derive camera position
+        let mut target = transform.translation - CAMERA_OFFSET;
+        target.x = target.x.clamp(-BOUNDING_RANGE, BOUNDING_RANGE);
+        target.z = target.z.clamp(-BOUNDING_RANGE, BOUNDING_RANGE);
+        transform.translation = target + CAMERA_OFFSET;
     }
 }

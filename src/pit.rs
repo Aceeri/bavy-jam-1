@@ -4,11 +4,17 @@
 use bevy::{prelude::*, scene2::bsn};
 
 use crate::rat::BOUNDING_RANGE;
+use crate::ui::Upgrades;
 
 pub fn plugin(app: &mut App) {
-    app.insert_resource(RatPit { half_size: 1.0 })
-        .add_systems(Startup, (spawn_ground, spawn_walls))
+    app.add_systems(Startup, (init_pit, spawn_ground, spawn_walls).chain())
         .add_systems(Update, rebuild_ground);
+}
+
+fn init_pit(mut commands: Commands, upgrades: Res<Upgrades>) {
+    commands.insert_resource(RatPit {
+        half_size: upgrades.pit_size,
+    });
 }
 
 #[derive(Resource, Reflect)]
@@ -20,7 +26,7 @@ pub struct RatPit {
 pub struct GroundPanel;
 
 const MAP_HALF: f32 = 25.0;
-const GROUND_DEPTH: f32 = 15.0;
+const GROUND_DEPTH: f32 = 1500.0;
 const WALL_HEIGHT: f32 = 1.0;
 const WALL_THICKNESS: f32 = 0.3;
 

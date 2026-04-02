@@ -3,12 +3,13 @@ use bevy::prelude::*;
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
 use crate::pit::RatPit;
+use crate::ui::Upgrades;
 
 #[derive(Resource, Default, Reflect)]
 pub struct RatCounter(pub u32);
 
 pub fn plugin(app: &mut App) {
-    app.init_resource::<RatCounter>();
+    app.insert_resource(RatCounter(100_000_000));
     app.add_systems(Startup, setup_rat_resources)
         .add_systems(
             Update,
@@ -40,7 +41,6 @@ struct RatSpawner {
 
 pub const BOUNDING_RANGE: f32 = 7.0;
 pub const SPAWN_RANGE: f32 = 6.0;
-pub const BROOM_LENGTH: f32 = 1.0;
 pub const BROOM_STRENGTH: f32 = 20.0;
 pub const DAMPING: f32 = 12.0;
 
@@ -53,6 +53,7 @@ fn setup_rat_resources(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    upgrades: Res<Upgrades>,
 ) {
     let mesh: Handle<Mesh> = asset_server.load(
         GltfAssetLabel::Primitive {
@@ -66,7 +67,7 @@ fn setup_rat_resources(
     commands.insert_resource(RatMesh(mesh));
     commands.insert_resource(RatMaterial(material));
     commands.insert_resource(RatSpawner {
-        timer: Timer::from_seconds(0.1, TimerMode::Repeating),
+        timer: Timer::from_seconds(upgrades.spawn_interval, TimerMode::Repeating),
         rng: SmallRng::from_rng(&mut rand::rng()),
     });
     commands.insert_resource(BroomState::default());
@@ -78,30 +79,49 @@ fn spawn_rats_over_time(
     rat_mesh: Option<Res<RatMesh>>,
     rat_material: Option<Res<RatMaterial>>,
     pit: Res<RatPit>,
+    upgrades: Res<Upgrades>,
     time: Res<Time>,
 ) {
     let (Some(mesh), Some(material)) = (rat_mesh, rat_material) else {
         return;
     };
 
+    spawner
+        .timer
+        .set_duration(std::time::Duration::from_secs_f32(upgrades.spawn_interval));
     spawner.timer.tick(time.delta());
 
     for _ in 0..spawner.timer.times_finished_this_tick() {
-        for _ in 0..10 {
-            let x = spawner.rng.random_range(-SPAWN_RANGE..SPAWN_RANGE);
-            let z = spawner.rng.random_range(-SPAWN_RANGE..SPAWN_RANGE);
+        let (x, z) = rand_pos_outside_pit(&mut spawner.rng, pit.half_size);
 
-            if x.abs() > pit.half_size || z.abs() > pit.half_size {
-                commands.spawn((
-                    Rat,
-                    Velocity::default(),
-                    Mesh3d(mesh.0.clone()),
-                    MeshMaterial3d(material.0.clone()),
-                    Transform::from_translation(Vec3::new(x, 0.0, z)),
-                ));
-                break;
-            }
-        }
+        commands.spawn((
+            Rat,
+            Velocity::default(),
+            Mesh3d(mesh.0.clone()),
+            MeshMaterial3d(material.0.clone()),
+            Transform::from_translation(Vec3::new(x, 0.0, z)),
+        ));
+    }
+}
+
+// 0..1 on X and Z, if its above 0.5 then its on the positive side of the pit, and vice versa
+// we also need to pick an axis to avoid the pit from, though this kind of leads to accumulation
+// in the corners... whatever, maybe some sort of trapezoidal uniform picking would be better but 24 hour jam
+//
+// otherwise we end up spawning in the pit most of the time and the pit upgrade becomes trash
+fn rand_pos_outside_pit(rng: &mut SmallRng, pit_half: f32) -> (f32, f32) {
+    let rand_axis = |rng: &mut SmallRng| -> f32 {
+        let t: f32 = rng.random_range(0.0..1.0);
+        let pos = pit_half + (BOUNDING_RANGE - pit_half) * ((t * 2.0).fract());
+        if t < 0.5 { -pos } else { pos }
+    };
+    let rand_free =
+        |rng: &mut SmallRng| -> f32 { rng.random_range(-BOUNDING_RANGE..BOUNDING_RANGE) };
+
+    if rng.random_range(0.0..1.0) < 0.5 {
+        (rand_axis(rng), rand_free(rng))
+    } else {
+        (rand_free(rng), rand_axis(rng))
     }
 }
 
@@ -120,10 +140,8 @@ fn apply_velocity(time: Res<Time>, mut query: Query<(&mut Transform, &Velocity),
 
         let flat_vel = Vec3::new(vel.0.x, 0.0, vel.0.z);
         if flat_vel.length_squared() > 0.01 {
-            let target = Transform::IDENTITY.looking_to(flat_vel, Vec3::Y);
-            transform.rotation = transform
-                .rotation
-                .slerp(target.rotation, (dt * 10.0).min(1.0));
+            let target = Quat::look_to_rh(flat_vel, Vec3::Y);
+            transform.rotation = transform.rotation.slerp(target, (dt * 10.0).min(1.0));
         }
     }
 }
@@ -201,6 +219,7 @@ fn cursor_push(
     cameras: Query<(&Camera, &GlobalTransform)>,
     mut rats: Query<(&Transform, &mut Velocity), With<Rat>>,
     mut broom: ResMut<BroomState>,
+    upgrades: Res<Upgrades>,
 ) {
     let world_pos = cursor_to_ground(&windows, &cameras);
 
@@ -222,7 +241,7 @@ fn cursor_push(
             let sweep_dir = Vec3::new(sweep.x, 0.0, sweep.z).normalize();
             let perp = Vec3::new(-sweep_dir.z, 0.0, sweep_dir.x);
 
-            let bristle_half = BROOM_LENGTH;
+            let bristle_half = upgrades.broom_length;
             let thickness = 0.5;
             let a = current - perp * bristle_half;
             let b = current + perp * bristle_half;
