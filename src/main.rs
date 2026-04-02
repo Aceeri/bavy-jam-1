@@ -1,3 +1,4 @@
+use bevy::dev_tools::fps_overlay::FpsOverlayPlugin;
 use bevy::prelude::*;
 
 pub mod camera;
@@ -9,6 +10,7 @@ fn main() {
     let mut app = App::new();
 
     app.add_plugins(DefaultPlugins)
+        .add_plugins(FpsOverlayPlugin::default())
         .add_plugins(health::plugin)
         .add_plugins(player::plugin)
         .add_plugins(rat::plugin)
