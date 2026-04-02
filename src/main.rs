@@ -1,3 +1,4 @@
+use bevy::asset::AssetMetaCheck;
 use bevy::dev_tools::fps_overlay::FpsOverlayPlugin;
 use bevy::prelude::*;
 
@@ -11,15 +12,18 @@ pub mod ui;
 fn main() {
     let mut app = App::new();
 
-    app.add_plugins(DefaultPlugins)
-        // .add_plugins(FpsOverlayPlugin::default())
-        .insert_resource(GlobalAmbientLight::NONE)
-        .add_plugins(health::plugin)
-        .add_plugins(player::plugin)
-        .add_plugins(rat::plugin)
-        .add_plugins(pit::plugin)
-        .add_plugins(camera::plugin)
-        .add_plugins(ui::plugin);
+    app.add_plugins(DefaultPlugins.set(AssetPlugin {
+        meta_check: AssetMetaCheck::Never,
+        ..default()
+    }))
+    // .add_plugins(FpsOverlayPlugin::default())
+    .insert_resource(GlobalAmbientLight::NONE)
+    .add_plugins(health::plugin)
+    .add_plugins(player::plugin)
+    .add_plugins(rat::plugin)
+    .add_plugins(pit::plugin)
+    .add_plugins(camera::plugin)
+    .add_plugins(ui::plugin);
 
     app.run();
 }

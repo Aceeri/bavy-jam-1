@@ -1,9 +1,10 @@
 //! RAT PIT RAT PIT RAT PIT
 //!
 
-use bevy::light::VolumetricLight;
-use bevy::render::occlusion_culling::OcclusionCulling;
-use bevy::{light::FogVolume, prelude::*};
+use bevy::prelude::*;
+
+#[cfg(not(target_arch = "wasm32"))]
+use bevy::light::{FogVolume, VolumetricLight};
 
 use crate::rat::BOUNDING_RANGE;
 use crate::ui::Upgrades;
@@ -13,7 +14,10 @@ pub fn plugin(app: &mut App) {
         Startup,
         (init_pit, spawn_ground, spawn_walls, spawn_corner_lights).chain(),
     )
-    .add_systems(Update, (rebuild_ground, resize_pit_fog));
+    .add_systems(Update, rebuild_ground);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    app.add_systems(Update, resize_pit_fog);
 }
 
 #[derive(Component)]
@@ -24,25 +28,28 @@ fn init_pit(mut commands: Commands, upgrades: Res<Upgrades>) {
         half_size: upgrades.pit_size,
     });
 
-    let h = upgrades.pit_size;
-    commands.spawn((
-        PitFog,
-        FogVolume {
-            density_factor: 1.0,
-            absorption: 0.8,
-            scattering: 0.0,
-            scattering_asymmetry: 0.0,
-            fog_color: Color::BLACK,
-            light_tint: Color::BLACK,
-            light_intensity: 0.0,
-            ..default()
-        },
-        Transform::from_translation(Vec3::new(0.0, -1.5, 0.0)).with_scale(Vec3::new(
-            h * 2.0,
-            3.0,
-            h * 2.0,
-        )),
-    ));
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let h = upgrades.pit_size;
+        commands.spawn((
+            PitFog,
+            FogVolume {
+                density_factor: 1.0,
+                absorption: 0.8,
+                scattering: 0.0,
+                scattering_asymmetry: 0.0,
+                fog_color: Color::BLACK,
+                light_tint: Color::BLACK,
+                light_intensity: 0.0,
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(0.0, -1.5, 0.0)).with_scale(Vec3::new(
+                h * 2.0,
+                3.0,
+                h * 2.0,
+            )),
+        ));
+    }
 }
 
 #[derive(Resource, Reflect)]
@@ -206,7 +213,7 @@ fn spawn_corner_lights(mut commands: Commands) {
         Vec3::new(b, height, b),
     ] {
         let dir = (Vec3::ZERO - corner).normalize();
-        commands.spawn((
+        let light = commands.spawn((
             SpotLight {
                 intensity: 500_000.0,
                 range: b * 5.0,
@@ -216,17 +223,16 @@ fn spawn_corner_lights(mut commands: Commands) {
                 shadow_maps_enabled: true,
                 ..default()
             },
-            VolumetricLight,
-            OcclusionCulling,
             Transform::from_translation(corner).looking_to(dir, Vec3::Y),
-        ));
+        )).id();
+        #[cfg(not(target_arch = "wasm32"))]
+        commands.entity(light).insert(VolumetricLight);
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn resize_pit_fog(pit: Res<RatPit>, mut fog: Query<&mut Transform, With<PitFog>>) {
-    if !pit.is_changed() {
-        return;
-    }
+    if !pit.is_changed() { return; }
     for mut transform in &mut fog {
         transform.scale = Vec3::new(pit.half_size * 2.0, 3.0, pit.half_size * 2.0);
     }
